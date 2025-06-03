@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:geolocator/geolocator.dart';
 
 const String baseUrl = 'http://10.0.2.2:8080/api/app';
 
@@ -63,14 +64,35 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
   Future<void> _fetchUserCityWeather() async {
     try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _statusText = '>> 無法取得定位權限';
+          });
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _statusText = '>> 定位權限被永久拒絕';
+        });
+        return;
+      }
+
+      // 取得目前位置
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
       final url = Uri.parse('$baseUrl/login');
       final response = await http.post(
         url,
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'userName': '測試用戶',
-          'latitude': 23.6813,
-          'longitude': 120.5528,
+          'latitude': position.latitude,
+          'longitude': position.longitude,
         }),
       );
       if (response.statusCode == 200) {
@@ -80,8 +102,12 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           _weather = data['weather']?.toString() ?? '';
         });
       }
-    } catch (e) {
-      // 可選: 顯示錯誤
+    } catch (e, stack) {
+      print('定位權限錯誤: $e');
+      print(stack);
+      setState(() {
+        _statusText = '>> 取得定位權限時發生錯誤: $e';
+      });
     }
   }
 
