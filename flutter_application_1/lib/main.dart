@@ -45,8 +45,11 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   List<dynamic> _plants = [];
   int? _selectedPlantId;
 
-  // 用於測試的 userId
-  final int _userId = 1;
+  int _userId = 1; // 目前所屬植物園 userId
+  final int _myUserId = 1; // 自己的 userId
+
+  // 好友清單
+  List<Map<String, dynamic>> _friends = [];
 
   // 新增可種植植物種類清單
   final List<String> _plantTypes = ['weed'];
@@ -59,7 +62,32 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   void initState() {
     super.initState();
     _fetchUserCityWeather();
+    _fetchFriends(); // 啟動時取得好友清單
     // 不自動載入植物，讓使用者主動操作
+  }
+
+  Future<void> _fetchFriends() async {
+    try {
+      final url = Uri.parse('$baseUrl/$_myUserId/friends');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> friends = jsonDecode(response.body);
+        setState(() {
+          _friends =
+              friends
+                  .map((f) => {'id': f['id'], 'friendName': f['friendName']})
+                  .toList();
+        });
+      } else {
+        setState(() {
+          _friends = [];
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _friends = [];
+      });
+    }
   }
 
   Future<void> _fetchUserCityWeather() async {
@@ -592,7 +620,10 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '[ 賽博植物終端機 v2.0 ]\n\n  種植狀態：?\n  使用者 ID：測試用戶' +
+              '[ 賽博植物終端機 v2.0 ]\n\n使用者 ID：' +
+                  (_userId == _myUserId
+                      ? '測試用戶'
+                      : '好友(${_friends.firstWhere((f) => f['id'] == _userId, orElse: () => {'friendName': '未知'})['friendName']})') +
                   (_city.isNotEmpty || _weather.isNotEmpty
                       ? '\n  城市：$_city\n  天氣：$_weather'
                       : ''),
@@ -610,6 +641,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                 _terminalButton('入土', 'plant'),
                 _terminalButton('澆水', 'water'),
                 _terminalButton('施肥', 'fertilize'),
+                _terminalButton('互動', 'friend-action'),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8.0),
                   child: Text(
@@ -674,6 +706,54 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                     if (plantId != null) _loadAscii(plantId);
                   },
                   onTap: _showMyPlants, // 點擊下拉選單時才刷新
+                ),
+                // 新增：好友植物園下拉選單
+                Padding(
+                  padding: const EdgeInsets.only(left: 12.0),
+                  child: DropdownButton<int>(
+                    value: _userId == _myUserId ? null : _userId,
+                    hint: Text(
+                      '進入好友植物園',
+                      style: TextStyle(color: Colors.greenAccent),
+                    ),
+                    dropdownColor: Colors.black,
+                    iconEnabledColor: Colors.greenAccent,
+                    items: [
+                      DropdownMenuItem<int>(
+                        value: null,
+                        child: Text(
+                          '回到自己',
+                          style: TextStyle(color: Colors.greenAccent),
+                        ),
+                      ),
+                      ..._friends.map(
+                        (f) => DropdownMenuItem<int>(
+                          value: f['id'],
+                          child: Text(
+                            f['friendName'],
+                            style: TextStyle(color: Colors.greenAccent),
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: (int? friendId) async {
+                      setState(() {
+                        _userId = friendId ?? _myUserId;
+                        _selectedPlantId = null;
+                        _asciiArt = '';
+                        _statusText =
+                            friendId == null
+                                ? '>> 已回到自己的植物園'
+                                : '>> 已進入"' +
+                                    (_friends.firstWhere(
+                                      (f) => f['id'] == friendId,
+                                      orElse: () => {'friendName': '未知'},
+                                    )['friendName']) +
+                                    '"的植物園';
+                      });
+                      await _showMyPlants();
+                    },
+                  ),
                 ),
               ],
             ),
