@@ -45,8 +45,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   List<dynamic> _plants = [];
   int? _selectedPlantId;
 
-  int _userId = 1; // 目前所屬植物園 userId
-  final int _myUserId = 1; // 自己的 userId
+  final int _userId = 1; // 自己的 userId，所有操作都用這個
+  int _currentGardenUserId = 1; // 目前瀏覽的植物園 userId
 
   // 好友清單
   List<Map<String, dynamic>> _friends = [];
@@ -61,14 +61,15 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   @override
   void initState() {
     super.initState();
+    _currentGardenUserId = _userId;
     _fetchUserCityWeather();
-    _fetchFriends(); // 啟動時取得好友清單
+    _fetchFriends();
     // 不自動載入植物，讓使用者主動操作
   }
 
   Future<void> _fetchFriends() async {
     try {
-      final url = Uri.parse('$baseUrl/$_myUserId/friends');
+      final url = Uri.parse('$baseUrl/$_userId/friends');
       final response = await http.get(url);
       if (response.statusCode == 200) {
         final List<dynamic> friends = jsonDecode(response.body);
@@ -362,7 +363,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
   Future<void> _showMyPlants() async {
     try {
-      final url = Uri.parse('$baseUrl/$_userId/plants');
+      final url = Uri.parse('$baseUrl/$_currentGardenUserId/plants');
       print('[DEBUG] GET: ' + url.toString());
       final response = await http.get(url).timeout(const Duration(seconds: 20));
       print('[DEBUG] status: ' + response.statusCode.toString());
@@ -371,11 +372,12 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
         final List<dynamic> plants = jsonDecode(response.body);
         setState(() {
           _plants = plants;
-          _statusText = '>> 選擇我的植物';
+          _statusText =
+              _currentGardenUserId == _userId ? '>> 選擇我的植物' : '>> 查看好友植物園';
         });
       } else {
         setState(() {
-          _statusText = '>> 無法取得植物清單 (狀態碼 ${response.statusCode})';
+          _statusText = '>> 無法取得植物清單 (狀態碼 {response.statusCode})';
         });
       }
     } on TimeoutException {
@@ -561,20 +563,82 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   }
 
   Widget _terminalButton(String label, String action) {
+    final isMyGarden = _currentGardenUserId == _userId;
+    final isInteract = action == 'friend-action';
+    final enabled = isMyGarden || isInteract;
     return TextButton(
-      onPressed: () {
-        if (action == 'plant') {
-          _showPlantTypeDialog();
-        } else {
-          _executeCommand(action);
-        }
-      },
-      child: Text('| $label |'),
+      onPressed:
+          enabled
+              ? () {
+                if (action == 'plant') {
+                  if (isMyGarden) _showPlantTypeDialog();
+                } else if (action == 'friend-action') {
+                  _interactWithPlant();
+                } else {
+                  if (isMyGarden) _executeCommand(action);
+                }
+              }
+              : null,
+      child: Text('|$label|'),
       style: TextButton.styleFrom(
-        foregroundColor: Colors.greenAccent,
+        foregroundColor: enabled ? Colors.greenAccent : Colors.grey,
         textStyle: TextStyle(fontFamily: 'monospace', fontSize: 18),
       ),
     );
+  }
+
+  // 互動功能：將當前植物畫面倒過來顯示，並切換 pot 狀態
+  Future<void> _interactWithPlant() async {
+    if (_selectedPlantId == null) {
+      setState(() {
+        _statusText = '>> 請先選擇植物';
+      });
+      return;
+    }
+    try {
+      // 查詢目前植物狀態
+      final url = Uri.parse('$baseUrl/$_currentGardenUserId/plants');
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final List<dynamic> plants = jsonDecode(response.body);
+        final plant = plants.firstWhere(
+          (p) => p['id'] == _selectedPlantId,
+          orElse: () => null,
+        );
+        if (plant == null) {
+          setState(() {
+            _statusText = '>> 找不到植物';
+          });
+          return;
+        }
+        final postUrl = Uri.parse(
+          '$baseUrl/$_userId/friend-action/$_selectedPlantId',
+        );
+        final postResp = await http.post(
+          postUrl,
+          headers: {'Content-Type': 'application/json'},
+        );
+        if (postResp.statusCode == 200) {
+          setState(() {
+            _statusText = '>> 互動成功，pot 狀態已切換';
+          });
+          await _showMyPlants();
+          await _loadAscii(_selectedPlantId!);
+        } else {
+          setState(() {
+            _statusText = '>> 互動失敗 (狀態碼 ${postResp.statusCode})';
+          });
+        }
+      } else {
+        setState(() {
+          _statusText = '>> 取得植物狀態失敗 (狀態碼 ${response.statusCode})';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _statusText = '>> 互動錯誤: $e';
+      });
+    }
   }
 
   Widget _asciiArtOrGifWidget() {
@@ -590,6 +654,21 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           width: 360,
           height: 220,
           fit: BoxFit.cover,
+        );
+      }
+      // 若 pot 狀態不是 Original，倒轉 ASCII Art
+      if (plant != null && plant['pot'] != null && plant['pot'] != 'Original') {
+        final lines = _asciiArt.split('\n');
+        final reversed = lines.reversed.join('\n');
+        return Text(
+          reversed,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            color: Colors.greenAccent,
+            fontSize: 18,
+            height: 1.0,
+            letterSpacing: 1.0,
+          ),
         );
       }
     }
@@ -608,6 +687,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
   @override
   Widget build(BuildContext context) {
+    final isMyGarden = _currentGardenUserId == _userId;
     return Scaffold(
       appBar: AppBar(
         title: Text('Cyber Terminal Garden'),
@@ -620,10 +700,10 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '[ 賽博植物終端機 v2.0 ]\n\n使用者 ID：' +
-                  (_userId == _myUserId
-                      ? '測試用戶'
-                      : '好友(${_friends.firstWhere((f) => f['id'] == _userId, orElse: () => {'friendName': '未知'})['friendName']})') +
+              '[ 賽博植物終端機 v2.0 ]\n目前瀏覽：' +
+                  (isMyGarden
+                      ? '自己的植物園'
+                      : '好友(${_friends.firstWhere((f) => f['id'] == _currentGardenUserId, orElse: () => {'friendName': '未知'})['friendName']})的植物園') +
                   (_city.isNotEmpty || _weather.isNotEmpty
                       ? '\n  城市：$_city\n  天氣：$_weather'
                       : ''),
@@ -643,7 +723,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                 _terminalButton('施肥', 'fertilize'),
                 _terminalButton('互動', 'friend-action'),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
                   child: Text(
                     '| 我的植物 >',
                     style: TextStyle(
@@ -711,7 +791,10 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                 Padding(
                   padding: const EdgeInsets.only(left: 12.0),
                   child: DropdownButton<int>(
-                    value: _userId == _myUserId ? null : _userId,
+                    value:
+                        _currentGardenUserId == _userId
+                            ? null
+                            : _currentGardenUserId,
                     hint: Text(
                       '進入好友植物園',
                       style: TextStyle(color: Colors.greenAccent),
@@ -738,7 +821,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                     ],
                     onChanged: (int? friendId) async {
                       setState(() {
-                        _userId = friendId ?? _myUserId;
+                        _currentGardenUserId = friendId ?? _userId;
                         _selectedPlantId = null;
                         _asciiArt = '';
                         _statusText =

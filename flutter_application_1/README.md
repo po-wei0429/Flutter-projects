@@ -21,3 +21,7 @@ cd "d:\Flutter projects\flutter_application_1"
 flutter run
 
 ```
+??
+git push -u origin main
+```
+
