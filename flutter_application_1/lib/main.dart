@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'dart:math';
 import 'package:geolocator/geolocator.dart';
 
 const String baseUrl = 'http://10.0.2.2:8080/api/app';
@@ -242,12 +243,12 @@ class TerminalStylePlantUI extends StatefulWidget {
 
 class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   String _statusText = '>> 等待命令...';
-  String _asciiArt = '';
+  List<String> _asciiArt = [];
   List<dynamic> _plants = [];
   int? _selectedPlantId;
 
   late final int _userId;
-  late final int _currentGardenUserId; // 目前瀏覽的植物園 userId
+  late int _currentGardenUserId; // 目前瀏覽的植物園 userId
 
   // 好友清單
   List<Map<String, dynamic>> _friends = [];
@@ -256,8 +257,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   final List<String> _plantTypes = ['weed'];
   String? _selectedPlantType;
 
-  late final String _city;
-  late final String _weather;
+  late String _city;
+  late String _weather;
 
   @override
   void initState() {
@@ -547,172 +548,162 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
   Future<void> _loadAscii(int plantId) async {
     try {
-      final url = Uri.parse('$baseUrl/plant-image/$plantId');
-      final response = await http.get(url);
-      if (response.statusCode == 200) {
+      final plant = _plants.firstWhere(
+        (p) => p['id'] == plantId,
+        orElse: () => null,
+      );
+
+      if (plant == null) {
         setState(() {
-          _asciiArt = response.body;
+          _asciiArt = ['>> 找不到植物資料 (id=$plantId)'];
           _selectedPlantId = plantId;
         });
-      } else {
-        // 圖片載入失敗時，根據植物種類/生長階段顯示對應 ASCII Art
-        final plant = _plants.firstWhere(
-          (p) => p['id'] == plantId,
-          orElse: () => null,
-        );
-        if (plant == null) {
-          setState(() {
-            _asciiArt = '>> 找不到植物資料 (id=$plantId)';
-            _selectedPlantId = plantId;
-          });
-        } else {
-          String ascii = '';
-          if (plant['type'] == 'Weed') {
-            ascii = getWeedAsciiArt(plant['growthStage']);
-          } else if (plant['type'] == 'yourOtherType') {
-            // 這裡可擴充其他植物種類的 ASCII Art
-            // ascii = getOtherTypeAsciiArt(plant['growthStage']);
-          } else {
-            ascii = '>> 無對應的 ASCII Art';
-          }
-          setState(() {
-            _asciiArt = ascii;
-            _selectedPlantId = plantId;
-          });
-        }
+        return;
       }
+
+      List<String> ascii = [];
+      if (plant['type'] == 'Weed') {
+        ascii = getWeedAsciiArt(plant['growthStage']);
+      } else {
+        ascii = ['>> 無對應的 ASCII Art'];
+      }
+
+      setState(() {
+        _asciiArt = ascii;
+        _selectedPlantId = plantId;
+      });
     } catch (e) {
       setState(() {
-        _asciiArt = '>> 圖片載入錯誤：$e';
+        _asciiArt = ['>> 載入 ASCII 錯誤: $e'];
       });
     }
   }
 
+
   // 根據雜草生長階段產生指定 ASCII Art
-  String getWeedAsciiArt(int growthStage) {
+  List<String> getWeedAsciiArt(int growthStage) {
     if (growthStage == -1) {
-      return '''
-
-
-
-
-
-
-
-             :J7
-            MMDbr
-          .7i..dB.
-       .. s     gu
-     iMB7.7. 
-     PQR  .:
-    PBQu  rY.
- :r::    E:
-          .Z..
- .|======================|.
- .|MMMMMMMMMMMMMMMMMMMMMM|.
-  .\\MMMMMMMMMMMMMMMMMMMM/.
-   .\\MMMMMMMMMMMMMMMMMM/.
-    .\\MMMMMMMMMMMMMMMM/.
-''';
+      return [
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"               :J7              ",
+"                MMDbr           ",
+"              .7i..dB.          ",
+"           .. s     gu          ",
+"         iMB7.7.                ",
+"         PQR  .:                ",
+"        PBQu  rY.               ",
+"       :r::    E:               ",
+"              .Z..              ",
+"   .|======================|.   ",
+"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
+"    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
+"     .\\MMMMMMMMMMMMMMMMMM/.     ",
+];
     } else if (growthStage == 0) {
-      return '''
-
-
-
-
-
-
-
-
-
-                  
-                  
-                  
-                  
-                                  
-            
-                 
- .|===========O==========|.
- .|MMMMMMMMMMMMMMMMMMMMMM|.
-  .\\MMMMMMMMMMMMMMMMMMMM/.
-   .\\MMMMMMMMMMMMMMMMMM/.
-    .\\MMMMMMMMMMMMMMMM/.
-''';
+      return [
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",        
+"                                ",
+"   .|===========O==========|.   ",
+"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
+"    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
+"     .\\MMMMMMMMMMMMMMMMMM/.     ",
+];
     } else if (growthStage == 1) {
-      return '''
-
-
-
-
-
-
-
-
-
-                ,T;
-              ;6gg.
-              8#5:
-              o;
-              c.
-             .@
-           ;U@@j;,
- .|======================|.
- .|MMMMMMMMMMMMMMMMMMMMMM|.
-  .\\MMMMMMMMMMMMMMMMMMMM/.
-   .\\MMMMMMMMMMMMMMMMMM/.
-    .\\MMMMMMMMMMMMMMMM/.
-''';
+      return [
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                  ,T;           ",
+"                ;6gg.           ",
+"                8#5:            ",
+"                o;              ",
+"                c.              ",
+"               .@               ",
+"             ;U@@j;,            ",
+"   .|======================|.   ",
+"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
+"    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
+"     .\\MMMMMMMMMMMMMMMMMM/.     ",
+];
     } else if (growthStage == 2) {
-      return '''
-
-
-
-
-                  .
-               H@@:
-             ;@@@U
-             U@\$c
-              T
-    ,vvL;:    v  .LpW@@D:
-    ;D@@@@@@J 3,@@@@@@R.
-       .c5H\$#J@@@@8o,
-             j@
-             @T
-             @v
-             @o
-             @o
- .|======================|.
- .|MMMMMMMMMMMMMMMMMMMMMM|.
-  .\\MMMMMMMMMMMMMMMMMMMM/.
-   .\\MMMMMMMMMMMMMMMMMM/.
-    .\\MMMMMMMMMMMMMMMM/.
-''';
+      return [
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                    .           ",
+"                 H@@:           ",
+"               ;@@@U            ",
+"               U@\$c            ",
+"                T               ",
+"      ,vvL;:    v  .LpW@@D:     ",
+"      ;D@@@@@@J 3,@@@@@@R.      ",
+"         .c5H\$#J@@@@8o,        ",
+"               j@               ",
+"               @T               ",
+"               @v               ",
+"               @o               ",
+"               @o               ",
+"   .|======================|.   ",
+"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
+"    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
+"     .\\MMMMMMMMMMMMMMMMMM/.     ",
+];
     } else if (growthStage == 3) {
-      return '''
-
-
-                 .v;
-               ,@@@,
-               \$@Z
-       .       c
-       ,\$@@@O  ; .v5W8Z:
-          L#@@;D@@@@@H,
-    H@@#Z;    @J;.
-     5@@@@@W  8    :;JLT;
-      .o\$@@@8B; W@@@@@@@T
-         :;JK@v@@@@@Wj. 
-             @c.:..
-             @
-             @
-             @;
- .|======================|.
- .|MMMMMMMMMMMMMMMMMMMMMM|.
-  .\\MMMMMMMMMMMMMMMMMMMM/.
-   .\\MMMMMMMMMMMMMMMMMM/.
-    .\\MMMMMMMMMMMMMMMM/.
-''';
+      return [
+"                                ",
+"                                ",
+"                  .v;           ",
+"                 ,@@@,          ",
+"         .       c              ",
+"         ,\$@@@O  ; .v5W8Z:     ",
+"            L#@@;D@@@@@H,       ",
+"      H@@#Z;    @J;.            ",
+"       5@@@@@W  8    :;JLT;     ",
+"        .o\$@@@8B; W@@@@@@@T    ",
+"           :;JK@v@@@@@Wj.       ",
+"               @c.:..           ",
+"               @                ",
+"               @                ",
+"               @;               ",
+"   .|======================|.   ",
+"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
+"    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
+"     .\\MMMMMMMMMMMMMMMMMM/.     ",
+];
     } else {
-      return '';
+      return [""];
     }
   }
 
@@ -796,48 +787,58 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   }
 
   Widget _asciiArtOrGifWidget() {
+    Widget asciiColumn(List<String> lines) {
+      return SizedBox(
+        width: 380,
+        height: 450,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.max,
+          children: lines.map((line) => SelectableText(
+            line,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 18,
+              color: Colors.greenAccent,
+              height: 1.0,
+              letterSpacing: 1.0,
+            ),
+          )).toList(),
+        ),
+      );
+    }
+
     if (_plants.isNotEmpty && _selectedPlantId != null) {
       final plant = _plants.firstWhere(
         (p) => p['id'] == _selectedPlantId,
         orElse: () => null,
       );
-      if (plant != null && plant['growthStage'] == -1) {
-        // 死亡狀態顯示 GIF
-        return Image.asset(
-          'assets/rick-roll.gif',
-          width: 360,
-          height: 220,
-          fit: BoxFit.cover,
+
+      // pot = Change 時反轉
+      if (plant != null && plant['pot'] != 'Original') {
+        final reversed = _asciiArt.reversed.toList();
+        return asciiColumn(reversed);
+      }
+
+      // 雨天效果
+      if (_weather.toLowerCase().contains('rain')) {
+        return SizedBox(
+          width: 370,
+          height: 450,
+          child: RainAsciiOverlay(asciiArt: _asciiArt),
         );
       }
-      // 若 pot 狀態不是 Original，倒轉 ASCII Art
-      if (plant != null && plant['pot'] != null && plant['pot'] != 'Original') {
-        final lines = _asciiArt.split('\n');
-        final reversed = lines.reversed.join('\n');
-        return Text(
-          reversed,
-          style: TextStyle(
-            fontFamily: 'monospace',
-            color: Colors.greenAccent,
-            fontSize: 18,
-            height: 1.0,
-            letterSpacing: 1.0,
-          ),
-        );
+
+      // 多雲
+      if (_weather.toLowerCase().contains('cloud')) {
+        return CloudAsciiOverlay(asciiArt: _asciiArt);
       }
+
     }
-    // 其餘狀態顯示 ASCII Art
-    return Text(
-      _asciiArt,
-      style: TextStyle(
-        fontFamily: 'monospace',
-        color: Colors.greenAccent,
-        fontSize: 18,
-        height: 1.0,
-        letterSpacing: 1.0,
-      ),
-    );
+
+    return asciiColumn(_asciiArt);
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -877,9 +878,9 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                 _terminalButton('施肥', 'fertilize'),
                 _terminalButton('互動', 'friend-action'),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 1.0),
                   child: Text(
-                    '| 我的植物 >',
+                    ' |植物 > ',
                     style: TextStyle(
                       color: Colors.greenAccent,
                       fontFamily: 'monospace',
@@ -959,7 +960,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                       DropdownMenuItem<int>(
                         value: null,
                         child: Text(
-                          '回到自己',
+                          '自己',
                           style: TextStyle(color: Colors.greenAccent),
                         ),
                       ),
@@ -977,7 +978,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                       setState(() {
                         _currentGardenUserId = friendId ?? _userId;
                         _selectedPlantId = null;
-                        _asciiArt = '';
+                        _asciiArt = [];
                         _statusText =
                             friendId == null
                                 ? '>> 已回到自己的植物園'
@@ -991,6 +992,145 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                       await _showMyPlants();
                     },
                   ),
+                ),
+                ElevatedButton(
+                  onPressed: _currentGardenUserId == _userId ? () async {
+                    final response = await http.get(Uri.parse('$baseUrl/$_userId/search-users'));
+                    final List<dynamic> searchResults = jsonDecode(response.body);
+
+                    if (searchResults.isEmpty) {
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text("沒有找到使用者"),
+                          content: Text("附近沒有其他使用者"),
+                          actions: [
+                            TextButton(
+                              child: Text("關閉"),
+                              onPressed: () => Navigator.pop(context),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: Colors.black,
+                          title: Text(
+                            "搜尋結果",
+                            style: TextStyle(
+                              color: Colors.greenAccent,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                          content: SizedBox(
+                            width: double.maxFinite,
+                            child: ListView.builder(
+                              shrinkWrap: true,
+                              itemCount: searchResults.length,
+                              itemBuilder: (context, index) {
+                                final user = searchResults[index];
+                                return ListTile(
+                                  title: Text(
+                                    user['userName'],
+                                    style: TextStyle(
+                                      color: Colors.greenAccent,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  subtitle: Text(
+                                    'ID: ${user['id']}',
+                                    style: TextStyle(
+                                      color: Colors.greenAccent,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  trailing: TextButton(
+                                    child: Text(
+                                      "加入",
+                                      style: TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontFamily: 'monospace',
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (_) => AlertDialog(
+                                          title: Text(
+                                              "確認加入",
+                                              style: TextStyle(
+                                              color: Colors.greenAccent,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                          content: Text(
+                                              "確定要加入 ${user['userName']} 為好友嗎？",
+                                              style: TextStyle(
+                                              color: Colors.greenAccent,
+                                              fontFamily: 'monospace',
+                                            ),
+                                          ),
+                                          actions: [
+                                            TextButton(
+                                              child: Text(
+                                                  "取消",style: TextStyle(
+                                                  color: Colors.greenAccent,
+                                                  fontFamily: 'monospace',
+                                                ),
+                                              ),
+                                              onPressed: () => Navigator.pop(context, false),
+                                            ),
+                                            TextButton(
+                                              child: Text(
+                                                "是",
+                                                style: TextStyle(
+                                                  color: Colors.greenAccent,
+                                                  fontFamily: 'monospace',
+                                                ),
+                                              ),
+                                              onPressed: () => Navigator.pop(context, true),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+
+                                      if (confirm == true) {
+                                        final addResp = await http.post(
+                                          Uri.parse('$baseUrl/$_userId/add-friend'),
+                                          headers: {'Content-Type': 'application/json'},
+                                          body: jsonEncode({'friendName': user['userName']}),
+                                        );
+                                        final msg = addResp.body;
+                                        Navigator.pop(context); // 關閉搜尋清單視窗
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(msg)),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  } : null,
+                  child: Text("| 搜尋好友 |"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    foregroundColor: Colors.greenAccent,
+                    textStyle: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 16,
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  )
                 ),
               ],
             ),
@@ -1020,16 +1160,174 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
               constraints: BoxConstraints(
                 minHeight: 450, // 22行 * 字體高度
                 maxHeight: 450,
-                minWidth: 37 * 10.0, // 36字 * 字體寬度
-                maxWidth: 37 * 10.0,
+                minWidth: 380, // 36字 * 字體寬度
+                maxWidth: 380,
               ),
               child: SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+                scrollDirection: Axis.vertical,
                 child: _asciiArtOrGifWidget(),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class RainAsciiOverlay extends StatefulWidget {
+  final List<String> asciiArt;
+
+  const RainAsciiOverlay({super.key, required this.asciiArt});
+
+  @override
+  State<RainAsciiOverlay> createState() => _RainAsciiOverlayState();
+}
+
+class _RainAsciiOverlayState extends State<RainAsciiOverlay> {
+  static const int numBars = 20;
+  static const Duration frameDelay = Duration(milliseconds: 150);
+  late List<List<String>> canvas;
+  late List<Offset> barPositions;
+  late Timer timer;
+  final Random random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    canvas = widget.asciiArt.map((line) => line.padRight(32).split('')).toList();
+    barPositions = List.generate(numBars, (_) {
+      int col = random.nextInt(32);
+      return Offset(0, col.toDouble());
+    });
+    timer = Timer.periodic(frameDelay, (_) => updateFrame());
+  }
+
+  void updateFrame() {
+    final frame = widget.asciiArt
+        .map((line) => line.padRight(32).split(''))
+        .toList(); // <-- 每次重新從原始 ASCII 畫板開始
+    final List<Offset> newPositions = [];
+
+    for (var pos in barPositions) {
+      int i = pos.dy.toInt();
+      int j = pos.dx.toInt();
+
+      if (i < frame.length) {
+        if (frame[i][j] == ' ') {
+          frame[i][j] = '|';
+          newPositions.add(Offset(j.toDouble(), (i + 1).toDouble()));
+        } else {
+          frame[i][j] = '*';
+          newPositions.add(Offset(random.nextInt(32).toDouble(), 0));
+        }
+      } else {
+        newPositions.add(Offset(random.nextInt(32).toDouble(), 0));
+      }
+    }
+
+    setState(() {
+      canvas = frame;
+      barPositions = newPositions;
+    });
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: const TextStyle(
+        color: Colors.greenAccent,
+        fontFamily: 'monospace',
+        fontSize: 18,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: canvas.map((row) => Text(row.join())).toList(),
+      ),
+    );
+  }
+}
+
+class CloudAsciiOverlay extends StatefulWidget {
+  final List<String> asciiArt;
+  const CloudAsciiOverlay({super.key, required this.asciiArt});
+
+  @override
+  State<CloudAsciiOverlay> createState() => _CloudAsciiOverlayState();
+}
+
+class _CloudAsciiOverlayState extends State<CloudAsciiOverlay> {
+  static const int numCloud = 8;
+  static const Duration frameDelay = Duration(milliseconds: 150);
+  late List<List<String>> canvas;
+  late List<Offset> barPositions;
+  late Timer timer;
+  final Random random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    canvas = widget.asciiArt.map((line) => line.padRight(32).split('')).toList();
+
+    barPositions = List.generate(numCloud, (_) {
+      int row = random.nextInt(3);
+      return Offset(0.0, row.toDouble());
+    });
+
+    timer = Timer.periodic(frameDelay, (_) => updateFrame());
+  }
+
+  void updateFrame() {
+    final frame = widget.asciiArt
+        .map((line) => line.padRight(32).split(''))
+        .toList(); // <-- 每次重新從原始 ASCII 畫板開始
+    final List<Offset> newPositions = [];
+
+    for (var pos in barPositions) {
+      int row = pos.dy.toInt();  // row 0~2
+      int col = pos.dx.toInt();  // column
+
+      if (row < frame.length && col < frame[row].length) {
+        if (frame[row][col] == ' ') {
+          frame[row][col] = '~'; // 或 '☁'
+          newPositions.add(Offset(col + 1.0, row.toDouble()));
+        } else {
+          newPositions.add(Offset(0, random.nextInt(3).toDouble()));
+        }
+      } else {
+        newPositions.add(Offset(0, random.nextInt(3).toDouble()));
+      }
+    }
+
+    setState(() {
+      canvas = frame;
+      barPositions = newPositions;
+    });
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: const TextStyle(
+        color: Colors.greenAccent,
+        fontFamily: 'monospace',
+        fontSize: 18,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: canvas.map((row) => Text(row.join())).toList(),
       ),
     );
   }
