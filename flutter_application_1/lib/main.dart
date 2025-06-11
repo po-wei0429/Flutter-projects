@@ -28,15 +28,216 @@ class CyberTerminalGarden extends StatelessWidget {
           ),
         ),
       ),
-      home: TerminalStylePlantUI(),
+      home: LoginRegisterScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
 }
 
-class TerminalStylePlantUI extends StatefulWidget {
+class LoginRegisterScreen extends StatefulWidget {
   @override
-  _TerminalStylePlantUIState createState() => _TerminalStylePlantUIState();
+  State<LoginRegisterScreen> createState() => _LoginRegisterScreenState();
+}
+
+class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
+  final TextEditingController _userNameController = TextEditingController();
+  String _status = '';
+  bool _isLoading = false;
+  double? _latitude;
+  double? _longitude;
+
+  Future<void> _getLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          setState(() {
+            _status = '無法取得定位權限';
+          });
+          return;
+        }
+      }
+      if (permission == LocationPermission.deniedForever) {
+        setState(() {
+          _status = '定位權限被永久拒絕';
+        });
+        return;
+      }
+      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      setState(() {
+        _latitude = position.latitude;
+        _longitude = position.longitude;
+      });
+    } catch (e) {
+      setState(() {
+        _status = '取得定位失敗: $e';
+      });
+    }
+  }
+
+  Future<void> _register() async {
+    setState(() { _isLoading = true; _status = ''; });
+    final userName = _userNameController.text.trim();
+    if (userName.isEmpty) {
+      setState(() { _status = '請輸入用戶名稱'; _isLoading = false; });
+      return;
+    }
+    try {
+      final url = Uri.parse('$baseUrl/register');
+      final resp = await http.post(url, headers: {'Content-Type': 'application/json'}, body: jsonEncode({'userName': userName}));
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body);
+        setState(() { _status = data['message'] ?? '註冊成功'; });
+      } else {
+        setState(() { _status = '註冊失敗: ${resp.body}'; });
+      }
+    } catch (e) {
+      setState(() { _status = '註冊錯誤: $e'; });
+    }
+    setState(() { _isLoading = false; });
+  }
+
+  Future<void> _login() async {
+    setState(() {
+      _isLoading = true;
+      _status = '';
+    });
+
+    final userName = _userNameController.text.trim();
+    if (userName.isEmpty) {
+      setState(() {
+        _status = '請輸入用戶名稱';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    try {
+      // 取得定位（合併進登入流程）
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      final url = Uri.parse('$baseUrl/login');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'userName': userName,
+          'latitude': position.latitude,
+          'longitude': position.longitude,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['userId'] != -1) {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(
+              builder: (_) => TerminalStylePlantUI(
+                userId: data['userId'],
+                city: data['city']?.toString() ?? '',
+                weather: data['weather']?.toString() ?? '',
+              ),
+            ),
+          );
+        } else {
+          setState(() {
+            _status = '登入失敗: ${data['message'] ?? response.body}';
+          });
+        }
+      } else {
+        setState(() {
+          _status = '登入失敗: ${response.body}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _status = '登入錯誤: $e';
+      });
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getLocation();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Container(
+          width: 400,
+          padding: EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            border: Border.all(color: Colors.greenAccent),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('賽博植物終端機', style: TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 24)),
+              SizedBox(height: 24),
+              TextField(
+                controller: _userNameController,
+                style: TextStyle(color: Colors.greenAccent, fontFamily: 'monospace'),
+                decoration: InputDecoration(
+                  labelText: '用戶名稱',
+                  labelStyle: TextStyle(color: Colors.greenAccent),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
+                  focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
+                ),
+              ),
+              SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _register,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
+                    child: Text('註冊'),
+                  ),
+                  ElevatedButton(
+                    onPressed: _isLoading ? null : _login,
+                    style: ElevatedButton.styleFrom(backgroundColor: Colors.greenAccent, foregroundColor: Colors.black),
+                    child: Text('登入'),
+                  ),
+                ],
+              ),
+              SizedBox(height: 24),
+              if (_status.isNotEmpty)
+                Text(_status, style: TextStyle(color: Colors.greenAccent, fontFamily: 'monospace')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TerminalStylePlantUI extends StatefulWidget {
+  final int userId;
+  final String city;
+  final String weather;
+
+  const TerminalStylePlantUI({
+    Key? key,
+    required this.userId,
+    required this.city,
+    required this.weather,
+  }) : super(key: key);
+
+  @override
+  State<TerminalStylePlantUI> createState() => _TerminalStylePlantUIState();
 }
 
 class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
@@ -45,8 +246,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   List<dynamic> _plants = [];
   int? _selectedPlantId;
 
-  final int _userId = 1; // 自己的 userId，所有操作都用這個
-  int _currentGardenUserId = 1; // 目前瀏覽的植物園 userId
+  late final int _userId;
+  late final int _currentGardenUserId; // 目前瀏覽的植物園 userId
 
   // 好友清單
   List<Map<String, dynamic>> _friends = [];
@@ -55,14 +256,16 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
   final List<String> _plantTypes = ['weed'];
   String? _selectedPlantType;
 
-  String _city = '';
-  String _weather = '';
+  late final String _city;
+  late final String _weather;
 
   @override
   void initState() {
     super.initState();
+    _userId = widget.userId;
     _currentGardenUserId = _userId;
-    _fetchUserCityWeather();
+    _city = widget.city;
+    _weather = widget.weather;
     _fetchFriends();
     // 不自動載入植物，讓使用者主動操作
   }
@@ -87,55 +290,6 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
     } catch (e) {
       setState(() {
         _friends = [];
-      });
-    }
-  }
-
-  Future<void> _fetchUserCityWeather() async {
-    try {
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          setState(() {
-            _statusText = '>> 無法取得定位權限';
-          });
-          return;
-        }
-      }
-      if (permission == LocationPermission.deniedForever) {
-        setState(() {
-          _statusText = '>> 定位權限被永久拒絕';
-        });
-        return;
-      }
-
-      // 取得目前位置
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
-      final url = Uri.parse('$baseUrl/login');
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'userName': '測試用戶',
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-        }),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        setState(() {
-          _city = data['city']?.toString() ?? '';
-          _weather = data['weather']?.toString() ?? '';
-        });
-      }
-    } catch (e, stack) {
-      print('定位權限錯誤: $e');
-      print(stack);
-      setState(() {
-        _statusText = '>> 取得定位權限時發生錯誤: $e';
       });
     }
   }
