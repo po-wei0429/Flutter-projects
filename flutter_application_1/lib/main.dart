@@ -173,11 +173,11 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: const Color.fromARGB(255, 0, 0, 0),
       body: Center(
         child: Container(
           width: 400,
-          padding: EdgeInsets.all(24),
+          padding: EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.black,
             border: Border.all(color: Colors.greenAccent),
@@ -187,7 +187,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text('賽博植物終端機', style: TextStyle(fontFamily: 'monospace', color: Colors.greenAccent, fontSize: 24)),
-              SizedBox(height: 24),
+              SizedBox(height: 12),
               TextField(
                 controller: _userNameController,
                 style: TextStyle(color: Colors.greenAccent, fontFamily: 'monospace'),
@@ -198,7 +198,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
                   focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
                 ),
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 12),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
@@ -214,7 +214,7 @@ class _LoginRegisterScreenState extends State<LoginRegisterScreen> {
                   ),
                 ],
               ),
-              SizedBox(height: 24),
+              SizedBox(height: 12),
               if (_status.isNotEmpty)
                 Text(_status, style: TextStyle(color: Colors.greenAccent, fontFamily: 'monospace')),
             ],
@@ -492,12 +492,16 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           .timeout(const Duration(seconds: 20));
       print('[DEBUG] status: ' + response.statusCode.toString());
       print('[DEBUG] response: ' + response.body);
-      setState(() {
-        _statusText =
-            (response.statusCode == 200)
-                ? '>> 執行指令 "$action" 成功'
-                : '>> 指令 "$action" 失敗 (狀態碼 ${response.statusCode})';
-      });
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _statusText = ">> ${data['message']}";
+        });
+      } else {
+        setState(() {
+          _statusText = '>> 指令 "$action" 失敗 (狀態碼 ${response.statusCode})';
+        });
+      }
       // 自動更新植物狀態
       if (action == 'water' || action == 'fertilize' || action == 'plant') {
         await _showMyPlants();
@@ -511,7 +515,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
       });
     } catch (e) {
       setState(() {
-        _statusText = '>> 執行錯誤: $e';
+        _statusText = '>> 等候中...';
       });
     }
   }
@@ -527,8 +531,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
         final List<dynamic> plants = jsonDecode(response.body);
         setState(() {
           _plants = plants;
-          _statusText =
-              _currentGardenUserId == _userId ? '>> 選擇我的植物' : '>> 查看好友植物園';
+          // _statusText =
+          //     _currentGardenUserId == _userId ? '>> 選擇我的植物' : '>> 查看好友植物園';
         });
       } else {
         setState(() {
@@ -591,6 +595,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "                                ",
 "                                ",
 "                                ",
+"                                ",
 "               :J7              ",
 "                MMDbr           ",
 "              .7i..dB.          ",
@@ -600,8 +605,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "        PBQu  rY.               ",
 "       :r::    E:               ",
 "              .Z..              ",
-"   .|======================|.   ",
-"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .I======================I.   ",
+"   .IMMMMMMMMMMMMMMMMMMMMMMI.   ",
 "   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
@@ -622,16 +627,18 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "                                ",
 "                                ",
 "                                ",
+"                                ",
 "                                ",        
 "                                ",
-"   .|===========O==========|.   ",
-"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .I===========O==========I.   ",
+"   .IMMMMMMMMMMMMMMMMMMMMMMI.   ",
 "   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
 ];
     } else if (growthStage == 1) {
       return [
+"                                ",
 "                                ",
 "                                ",
 "                                ",
@@ -648,8 +655,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "                c.              ",
 "               .@               ",
 "             ;U@@j;,            ",
-"   .|======================|.   ",
-"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .I======================I.   ",
+"   .IMMMMMMMMMMMMMMMMMMMMMMI.   ",
 "   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
@@ -673,14 +680,16 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "               @v               ",
 "               @o               ",
 "               @o               ",
-"   .|======================|.   ",
-"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .I======================I.   ",
+"   .IMMMMMMMMMMMMMMMMMMMMMMI.   ",
 "   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
 ];
     } else if (growthStage == 3) {
       return [
+"                                ",
+"                                ",
 "                                ",
 "                                ",
 "                  .v;           ",
@@ -696,8 +705,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "               @                ",
 "               @                ",
 "               @;               ",
-"   .|======================|.   ",
-"   .|MMMMMMMMMMMMMMMMMMMMMM|.   ",
+"   .I======================I.   ",
+"   .IMMMMMMMMMMMMMMMMMMMMMMI.   ",
 "   .\\MMMMMMMMMMMMMMMMMMMMMM/.   ",
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
@@ -765,7 +774,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
         );
         if (postResp.statusCode == 200) {
           setState(() {
-            _statusText = '>> 互動成功，pot 狀態已切換';
+            _statusText = '>> 互動了';
           });
           await _showMyPlants();
           await _loadAscii(_selectedPlantId!);
@@ -790,7 +799,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
     Widget asciiColumn(List<String> lines) {
       return SizedBox(
         width: 380,
-        height: 450,
+        height: 480,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.max,
@@ -822,13 +831,12 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
       // 雨天效果
       if (_weather.toLowerCase().contains('rain')) {
-        return SizedBox(
-          width: 370,
-          height: 450,
-          child: RainAsciiOverlay(asciiArt: _asciiArt),
-        );
+        return ClearAsciiOverlay(asciiArt: _asciiArt);
       }
-
+      // 晴天
+      if (_weather.toLowerCase().contains('clear')) {
+        return ClearAsciiOverlay(asciiArt: _asciiArt);
+      }
       // 多雲
       if (_weather.toLowerCase().contains('cloud')) {
         return CloudAsciiOverlay(asciiArt: _asciiArt);
@@ -845,7 +853,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
     final isMyGarden = _currentGardenUserId == _userId;
     return Scaffold(
       appBar: AppBar(
-        title: Text('Cyber Terminal Garden'),
+        title: Text('賽博植物終端機 v3.0'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.greenAccent,
       ),
@@ -855,7 +863,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              '[ 賽博植物終端機 v2.0 ]\n目前瀏覽：' +
+              '目前瀏覽：' +
                   (isMyGarden
                       ? '自己的植物園'
                       : '好友(${_friends.firstWhere((f) => f['id'] == _currentGardenUserId, orElse: () => {'friendName': '未知'})['friendName']})的植物園') +
@@ -1101,15 +1109,18 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
                                       if (confirm == true) {
                                         final addResp = await http.post(
-                                          Uri.parse('$baseUrl/$_userId/add-friend'),
-                                          headers: {'Content-Type': 'application/json'},
-                                          body: jsonEncode({'friendName': user['userName']}),
+                                        Uri.parse('$baseUrl/$_userId/add-friend'),
+                                        headers: {'Content-Type': 'application/json'},
+                                        body: jsonEncode({'friendName': user['userName']}),
                                         );
                                         final msg = addResp.body;
-                                        Navigator.pop(context); // 關閉搜尋清單視窗
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(msg)),
-                                        );
+                                        if (msg.contains("成功")) {
+                                          await _fetchFriends(); // ✅ 重新取得好友清單
+                                        }
+                                        Navigator.pop(context); // 關閉搜尋清單
+                                        setState(() {
+                                          _statusText = ">> $msg"; // ✅ 更新狀態文字
+                                        });
                                       }
                                     },
                                   ),
@@ -1134,7 +1145,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
             Container(
               alignment: Alignment.topLeft,
               padding: EdgeInsets.all(12),
@@ -1150,16 +1161,16 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
               ),
             ),
             // 新增 ASCII Art 顯示區塊
-            const SizedBox(height: 10),
+            const SizedBox(height: 4),
             Container(
               alignment: Alignment.topLeft,
-              padding: EdgeInsets.all(12),
+              padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                 border: Border.all(color: Colors.greenAccent),
               ),
               constraints: BoxConstraints(
-                minHeight: 450, // 22行 * 字體高度
-                maxHeight: 450,
+                minHeight: 480,
+                maxHeight: 480,
                 minWidth: 380, // 36字 * 字體寬度
                 maxWidth: 380,
               ),
@@ -1248,7 +1259,33 @@ class _RainAsciiOverlayState extends State<RainAsciiOverlay> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: canvas.map((row) => Text(row.join())).toList(),
+        children: List.generate(canvas.length, (i) {
+          final row = canvas[i];
+          return RichText(
+            text: TextSpan(
+              children: row.map((char) {
+                Color color;
+
+                if (char == '|' || char == '*') {
+                  color = const Color.fromARGB(255, 104, 156, 246); // 雨滴
+                } else if (i >= 17 && i <= 21) {
+                  color = Colors.brown; // 盆栽範圍
+                } else {
+                  color = Colors.greenAccent; // 其他文字
+                }
+
+                return TextSpan(
+                  text: char,
+                  style: TextStyle(
+                    color: color,
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        }),
       ),
     );
   }
@@ -1321,13 +1358,144 @@ class _CloudAsciiOverlayState extends State<CloudAsciiOverlay> {
   Widget build(BuildContext context) {
     return DefaultTextStyle(
       style: const TextStyle(
-        color: Colors.greenAccent,
         fontFamily: 'monospace',
         fontSize: 18,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        children: canvas.map((row) => Text(row.join())).toList(),
+        children: List.generate(canvas.length, (i) {
+          final row = canvas[i];
+          return RichText(
+            text: TextSpan(
+              children: row.map((char) {
+                Color color;
+
+                if (i >= 0 && i <= 3) {
+                  color = Colors.white; // ☁️ 雲區前四行
+                } else if (i >= 17 && i <= 21) {
+                  color = Colors.brown; // 🪴 盆栽區
+                } else {
+                  color = Colors.greenAccent; // 主畫面風格
+                }
+
+                return TextSpan(
+                  text: char,
+                  style: TextStyle(
+                    color: color,
+                    fontFamily: 'monospace',
+                    fontSize: 18
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        }),
+      ),
+    );
+  }
+}
+
+class ClearAsciiOverlay extends StatefulWidget {
+  final List<String> asciiArt;
+  const ClearAsciiOverlay({super.key, required this.asciiArt});
+
+  @override
+  State<ClearAsciiOverlay> createState() => _ClearAsciiOverlayState();
+}
+
+class _ClearAsciiOverlayState extends State<ClearAsciiOverlay> {
+  static const Duration frameDelay = Duration(milliseconds: 500);
+  static const int width = 32;
+  late List<List<String>> canvas;
+  late Timer timer;
+  bool showRays = true;
+
+  // 定義兩種狀態的太陽動畫（使用字元符號）
+  final List<List<String>> sunStates = [
+    [ // 狀態 1
+      "BBBBi.                          ",
+      "BBBBB: ~                        ",
+      "*iii*                           ",
+      " |   \\                          "
+    ],
+    [ // 狀態 2
+      "BBBBi. ~                        ",
+      "BBBBB:                          ",
+      "*iii* \\                         ",
+      "  |                             "
+    ],
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    timer = Timer.periodic(frameDelay, (_) => updateFrame());
+    canvas = widget.asciiArt.map((line) => line.padRight(width).split('')).toList();
+  }
+
+  void updateFrame() {
+    // 選擇太陽狀態
+    final sun = showRays ? sunStates[0] : sunStates[1];
+
+    // 基於原始 ASCII 複製畫面
+    final frame = widget.asciiArt.map((line) => line.padRight(width).split('')).toList();
+
+    // 將太陽內容覆蓋到前 4 行
+    for (int i = 0; i < 4 && i < frame.length; i++) {
+      final line = sun[i].padRight(width);
+      for (int j = 0; j < width && j < line.length; j++) {
+        frame[i][j] = line[j];
+      }
+    }
+
+    setState(() {
+      canvas = frame;
+      showRays = !showRays; // 交替狀態
+    });
+  }
+
+  @override
+  void dispose() {
+    timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: const TextStyle(
+        fontFamily: 'monospace',
+        fontSize: 18,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: List.generate(canvas.length, (i) {
+          final row = canvas[i];
+          return RichText(
+            text: TextSpan(
+              children: row.map((char) {
+                Color color;
+
+                if (i >= 0 && i <= 3) {
+                  color = Colors.yellow; // 太陽區域
+                } else if (i >= 17 && i <= 21) {
+                  color = Colors.brown; //  盆栽區
+                } else {
+                  color = Colors.greenAccent; // 其餘為畫面主體
+                }
+
+                return TextSpan(
+                  text: char,
+                  style: TextStyle(
+                    color: color,
+                    fontFamily: 'monospace',
+                    fontSize: 18
+                  ),
+                );
+              }).toList(),
+            ),
+          );
+        }),
       ),
     );
   }
