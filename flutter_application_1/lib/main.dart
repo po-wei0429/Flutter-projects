@@ -583,7 +583,6 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
     }
   }
 
-
   // 根據雜草生長階段產生指定 ASCII Art
   List<String> getWeedAsciiArt(int growthStage) {
     if (growthStage == -1) {
@@ -797,23 +796,36 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
   Widget _asciiArtOrGifWidget() {
     Widget asciiColumn(List<String> lines) {
-      return SizedBox(
-        width: 380,
-        height: 480,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.max,
-          children: lines.map((line) => SelectableText(
-            line,
-            style: const TextStyle(
-              fontFamily: 'monospace',
-              fontSize: 18,
-              color: Colors.greenAccent,
-              height: 1.0,
-              letterSpacing: 1.0,
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: List.generate(lines.length, (i) {
+          final line = lines[i];
+          return RichText(
+            text: TextSpan(
+              children: line.split('').map((char) {
+                Color color;
+
+                // 因為是反轉過來的畫面，第 0~4 列實際是原本的第 21~17 行（盆栽）
+                if (i >= 0 && i <= 4) {
+                  color = Colors.brown;
+                } else {
+                  color = Colors.greenAccent;
+                }
+
+                return TextSpan(
+                  text: char,
+                  style: TextStyle(
+                    color: color,
+                    fontFamily: 'monospace',
+                    fontSize: 18,
+                    height: 1.0,
+                    letterSpacing: 1.0,
+                  ),
+                );
+              }).toList(),
             ),
-          )).toList(),
-        ),
+          );
+        }),
       );
     }
 
@@ -831,7 +843,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 
       // 雨天效果
       if (_weather.toLowerCase().contains('rain')) {
-        return ClearAsciiOverlay(asciiArt: _asciiArt);
+        return RainAsciiOverlay(asciiArt: _asciiArt);
       }
       // 晴天
       if (_weather.toLowerCase().contains('clear')) {
@@ -843,10 +855,8 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
       }
 
     }
-
     return asciiColumn(_asciiArt);
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -872,7 +882,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                       : ''),
               style: TextStyle(
                 fontFamily: 'monospace',
-                color: Colors.greenAccent,
+                color: const Color.fromARGB(255, 171, 249, 255),
                 fontSize: 16,
               ),
             ),
@@ -1132,7 +1142,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                       },
                     );
                   } : null,
-                  child: Text("| 搜尋好友 |"),
+                  child: Text("| 搜尋附近的使用者 |"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     foregroundColor: Colors.greenAccent,
