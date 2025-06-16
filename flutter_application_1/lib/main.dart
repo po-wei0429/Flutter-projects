@@ -1,5 +1,6 @@
 // 對應 Spring Boot 的 API 的 Flutter 框架整合
 // 假設你的 baseUrl 是 http://10.0.2.2:8080（VSCode + Android 模擬器）
+// azure basUrl https://cyberbotanic.politehill-c76aad8c.japaneast.azurecontainerapps.io
 
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -8,7 +9,8 @@ import 'dart:async';
 import 'dart:math';
 import 'package:geolocator/geolocator.dart';
 
-const String baseUrl = 'http://10.0.2.2:8080/api/app';
+//const String baseUrl = 'http://10.0.2.2:8080/api/app';
+const String baseUrl = 'https://cyberbotanic.politehill-c76aad8c.japaneast.azurecontainerapps.io/api/app';
 
 void main() {
   runApp(CyberTerminalGarden());
@@ -268,7 +270,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
     _city = widget.city;
     _weather = widget.weather;
     _fetchFriends();
-    // 不自動載入植物，讓使用者主動操作
+    _showMyPlants();
   }
 
   Future<void> _fetchFriends() async {
@@ -685,7 +687,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
 "    .\\MMMMMMMMMMMMMMMMMMMM/.    ",
 "     .\\MMMMMMMMMMMMMMMMMM/.     ",
 ];
-    } else if (growthStage == 3) {
+    } else if (growthStage >= 3) {
       return [
 "                                ",
 "                                ",
@@ -850,7 +852,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
         return ClearAsciiOverlay(asciiArt: _asciiArt);
       }
       // 多雲
-      if (_weather.toLowerCase().contains('cloud')) {
+      if (_weather.toLowerCase().contains('cloud') || _weather.toLowerCase().contains('mist')) {
         return CloudAsciiOverlay(asciiArt: _asciiArt);
       }
 
@@ -1024,7 +1026,7 @@ class _TerminalStylePlantUIState extends State<TerminalStylePlantUI> {
                           content: Text("附近沒有其他使用者"),
                           actions: [
                             TextButton(
-                              child: Text("關閉"),
+                              child: Text("關閉",style: TextStyle(color: Colors.greenAccent)),
                               onPressed: () => Navigator.pop(context),
                             ),
                           ],
